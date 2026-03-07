@@ -10,14 +10,17 @@ var configData = {
   enableGradient    : false,
   enableAccent      : true,
   enableTabLine     : true,
-  enableToolbarOverride : true
+  enableToolbarOverride : true,
+  noReuseOldColor   : false,
+  newTabColor       : '#ffffff',
+  contentColorScheme : 'auto'
 }
 
 function checkStoredSettings(item) {
   if (!item.configData) {
     browser.storage.local.set({configData});
   } else {
-    configData = item.configData;
+    configData = Object.assign({}, configData, item.configData);
   }
 }
 
@@ -26,22 +29,73 @@ function onError(error) {
 }
 
 var gettingItem = browser.storage.local.get();
-gettingItem.then(checkStoredSettings, onError);
+gettingItem.then(checkStoredSettings, onError).then(() => {
+  applyContentColorScheme();
+  updateActiveTab();
+});
+
+browser.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local') {
+    if (changes.configData) {
+      configData = Object.assign({}, configData, changes.configData.newValue);
+      applyContentColorScheme();
+    }
+  }
+});
+
+browser.runtime.onMessage.addListener((message) => {
+  if (message.kind === 'refresh') {
+    browser.storage.local.get().then(checkStoredSettings, onError).then(() => {
+      applyContentColorScheme();
+      updateActiveTab();
+    });
+  }
+});
+
+function applyContentColorScheme() {
+  if (!browser.browserSettings || !browser.browserSettings.overrideContentColorScheme) {
+    return;
+  }
+  const value = configData.contentColorScheme || 'auto';
+  browser.browserSettings.overrideContentColorScheme.set({ value }).catch(onError);
+}
 
 /* This is more aggressive override..*/
 let isFirstRun = true;
 
-function shouldSkipUrl(url){
-  let shouldSkip = false;
-  if(url === "about:newtab" || url === "about:blank") {
-    if(isFirstRun) {
-      isFirstRun = false;
-      shouldSkip = false;
-    } else {
-      shouldSkip = true;
-    }
+const NEW_TAB_URLS = ['about:newtab', 'about:blank', 'about:home'];
+
+function shouldSkipUrl(url) {
+  if (!url) return false;
+  const isNewTab = NEW_TAB_URLS.some(u => url.startsWith(u) || url === u);
+  if (!isNewTab) return false;
+  if (isFirstRun) {
+    isFirstRun = false;
+    return false;
   }
-  return shouldSkip;
+  return true;
+}
+
+function resetTheme() {
+  browser.theme.reset();
+}
+
+function applyNewTabColor() {
+  const hex = configData.newTabColor || '#ffffff';
+  const rgb = util_hexToRgb(hex);
+  if (!rgb) {
+    resetTheme();
+    return;
+  }
+  const color = { r: rgb.r, g: rgb.g, b: rgb.b, alpha: 255 };
+  const themeProposal = util_themePackage(color);
+  themeProposal.colors.tab_line = themeProposal.colors.frame;
+  themeProposal.colors.toolbar_bottom_separator = themeProposal.colors.frame;
+  themeProposal.colors.toolbar_top_separator = themeProposal.colors.frame;
+  themeProposal.colors.toolbar_field_border = themeProposal.colors.frame;
+  themeProposal.colors.toolbar_field_border_focus = themeProposal.colors.frame;
+  themeProposal.colors.popup_border = themeProposal.colors.frame;
+  util_custom_update(themeProposal);
 }
 
 function updateActiveTab_pageloaded(tabId, changeInfo) {
@@ -49,6 +103,9 @@ function updateActiveTab_pageloaded(tabId, changeInfo) {
         if (tabs[0]) {
           var tabURLkey = tabs[0].url;
           if(shouldSkipUrl(tabURLkey)) {
+            if (configData.noReuseOldColor) {
+              applyNewTabColor();
+            }
             return;
           }
 
@@ -59,6 +116,9 @@ function updateActiveTab_pageloaded(tabId, changeInfo) {
 
           if(indexedStateMap[tabURLkey] != 3 && changeInfo.status == 'complete') {
             currentActiveTab = tabURLkey;
+            if (configData.noReuseOldColor) {
+              applyNewTabColor();
+            }
             var capturing = browser.tabs.captureVisibleTab();
             capturing.then(onCaptured, onError);
           }
@@ -71,6 +131,9 @@ function updateTab(tabs) {
     if (tabs[0]) {
       var tabURLkey = tabs[0].url;
       if(shouldSkipUrl(tabURLkey)) {
+        if (configData.noReuseOldColor) {
+          applyNewTabColor();
+        }
         return;
       }
       if(pendingApplyColor) {
@@ -94,6 +157,9 @@ function updateTab(tabs) {
 
       } else {
         currentActiveTab = tabURLkey;
+        if (configData.noReuseOldColor) {
+          applyNewTabColor();
+        }
         var capturing = browser.tabs.captureVisibleTab();
         capturing.then(onCaptured, onError);
       }
@@ -149,6 +215,8 @@ function util_custom_update(themeProposal) {
   let themeProposal_copy = JSON.parse(JSON.stringify(themeProposal));
   if(configData.enableBorder) {
     delete themeProposal_copy.colors.toolbar_bottom_separator;
+    delete themeProposal_copy.colors.toolbar_top_separator;
+    delete themeProposal_copy.colors.popup_border;
   }
   if(!configData.enableGradient) {
     delete themeProposal_copy.images;
@@ -165,9 +233,6 @@ function util_custom_update(themeProposal) {
   }
 
   browser.theme.update(themeProposal_copy);
-  // browser.theme.getCurrent().then(theme => {
-  //   console.log(theme);
-  // })
 }
 
 // https://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb
@@ -190,6 +255,7 @@ function util_themePackage(color) {
   const dimmedBackgroundColor = `rgba(${color.r + adjust}, ${color.g + adjust}, ${color.b + adjust}, 1)`;
   const textColor = `rgb(${textC}, ${textC}, ${textC})`;
   const transparentTextColor = `rgba(${textC}, ${textC}, ${textC}, 0.25)`;
+  const tabSelectedColor = textC === 0 ? backgroundColor : transparentTextColor;
   let colorObject = {
     bookmark_text: textColor,
     button_background_active: dimmedBackgroundColor,
@@ -200,7 +266,7 @@ function util_themePackage(color) {
     icons: textColor,
     ntp_background: backgroundColor,
     ntp_text: textColor,
-    popup_border: transparentTextColor,
+    popup_border: backgroundColor,
     popup_highlight_text: dimmedBackgroundColor,
     popup_highlight: textColor,
     popup_text: textColor,
@@ -214,10 +280,10 @@ function util_themePackage(color) {
     tab_background_text: textColor,
     tab_line: dimmedBackgroundColor,
     tab_loading: textColor,
-    tab_selected: transparentTextColor,
+    tab_selected: tabSelectedColor,
     tab_text: textColor,
     toolbar_bottom_separator: backgroundColor,
-    toolbar_field_border_focus: transparentTextColor,
+    toolbar_field_border_focus: backgroundColor,
     toolbar_field_border: backgroundColor,
     toolbar_field_focus: backgroundColor,
     toolbar_field_highlight_text: textColor,
@@ -254,5 +320,3 @@ function util_themePackage(color) {
 browser.tabs.onUpdated.addListener(updateActiveTab_pageloaded);
 browser.tabs.onActivated.addListener(updateActiveTab);
 browser.windows.onFocusChanged.addListener(updateActiveTab);
-
-updateActiveTab();

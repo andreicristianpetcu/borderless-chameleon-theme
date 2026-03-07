@@ -6,6 +6,7 @@
   "permissions": [
     "tabs",
     "storage",
+    "browserSettings",
     "<all_urls>",
     "theme"
   ],

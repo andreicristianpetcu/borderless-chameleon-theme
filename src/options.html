@@ -33,6 +33,22 @@
       <input type="checkbox" id="config_HTML_toolbar" >
   </form>
 
+  <form>
+    <label>Only new tab color (use fixed color instead of reusing previous tab color)</label>
+    <input type="checkbox" id="config_HTML_no_reuse" >
+    <label for="config_HTML_new_tab_color" style="margin-left:8px">Color:</label>
+    <input type="color" id="config_HTML_new_tab_color" value="#ffffff" title="Color for new tabs">
+  </form>
+
+  <form>
+    <label>Tell websites I prefer</label>
+    <select id="config_HTML_content_color_scheme">
+      <option value="auto">Auto (follow browser theme)</option>
+      <option value="light">Light theme</option>
+      <option value="dark">Dark theme</option>
+    </select>
+  </form>
+
   <script src="options.js"></script>
 </body>
 
