@@ -90,11 +90,6 @@ function applyNewTabColor() {
   const color = { r: rgb.r, g: rgb.g, b: rgb.b, alpha: 255 };
   const themeProposal = util_themePackage(color);
   themeProposal.colors.tab_line = themeProposal.colors.frame;
-  themeProposal.colors.toolbar_bottom_separator = themeProposal.colors.frame;
-  themeProposal.colors.toolbar_top_separator = themeProposal.colors.frame;
-  themeProposal.colors.toolbar_field_border = themeProposal.colors.frame;
-  themeProposal.colors.toolbar_field_border_focus = themeProposal.colors.frame;
-  themeProposal.colors.popup_border = themeProposal.colors.frame;
   util_custom_update(themeProposal);
 }
 
@@ -116,9 +111,6 @@ function updateActiveTab_pageloaded(tabId, changeInfo) {
 
           if(indexedStateMap[tabURLkey] != 3 && changeInfo.status == 'complete') {
             currentActiveTab = tabURLkey;
-            if (configData.noReuseOldColor) {
-              applyNewTabColor();
-            }
             var capturing = browser.tabs.captureVisibleTab();
             capturing.then(onCaptured, onError);
           }
@@ -157,9 +149,6 @@ function updateTab(tabs) {
 
       } else {
         currentActiveTab = tabURLkey;
-        if (configData.noReuseOldColor) {
-          applyNewTabColor();
-        }
         var capturing = browser.tabs.captureVisibleTab();
         capturing.then(onCaptured, onError);
       }
@@ -213,7 +202,7 @@ function onError(error) {
 
 function util_custom_update(themeProposal) {
   let themeProposal_copy = JSON.parse(JSON.stringify(themeProposal));
-  if(configData.enableBorder) {
+  if(!configData.enableBorder) {
     delete themeProposal_copy.colors.toolbar_bottom_separator;
     delete themeProposal_copy.colors.toolbar_top_separator;
     delete themeProposal_copy.colors.popup_border;
