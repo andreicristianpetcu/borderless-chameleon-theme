@@ -6,14 +6,14 @@ let pendingApplyColor = null;
 /* Config and storage */
 
 var configData = {
-  enableBorder      : false,
+  enableBorder      : true,
   enableGradient    : false,
   enableAccent      : true,
   enableTabLine     : true,
   enableToolbarOverride : true,
-  noReuseOldColor   : false,
+  noReuseOldColor   : true,
   newTabColor       : '#ffffff',
-  contentColorScheme : 'auto',
+  contentColorScheme : 'light',
   blocklistColors   : ''
 }
 
