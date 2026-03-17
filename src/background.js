@@ -13,7 +13,8 @@ var configData = {
   enableToolbarOverride : true,
   noReuseOldColor   : false,
   newTabColor       : '#ffffff',
-  contentColorScheme : 'auto'
+  contentColorScheme : 'auto',
+  blocklistColors   : ''
 }
 
 function checkStoredSettings(item) {
@@ -181,6 +182,13 @@ function onCaptured(imageUri) {
         alpha : canvasData[canvasIndex + 3]
     };
 
+    if (util_isColorBlocked(color.r, color.g, color.b)) {
+      const fallback = util_hexToRgb(configData.newTabColor || '#f0f0f0');
+      if (fallback) {
+        color = { r: fallback.r, g: fallback.g, b: fallback.b, alpha: 255 };
+      }
+    }
+
     let themeProposal = util_themePackage(color);
 
     if(currentActiveTab) {
@@ -232,6 +240,25 @@ function util_hexToRgb(hex) {
         g: parseInt(result[2], 16),
         b: parseInt(result[3], 16)
     } : null;
+}
+
+const BLOCKLIST_TOLERANCE = 30;
+
+function util_parseBlocklistColors(str) {
+  if (!str || typeof str !== 'string') return [];
+  return str.split(/[,\s]+/).map(s => s.trim()).filter(s => /^#?[a-f\d]{6}$/i.test(s));
+}
+
+function util_isColorBlocked(r, g, b) {
+  const hexList = util_parseBlocklistColors(configData.blocklistColors);
+  if (hexList.length === 0) return false;
+  for (const hex of hexList) {
+    const parsed = util_hexToRgb(hex);
+    if (!parsed) continue;
+    const diff = Math.abs(r - parsed.r) + Math.abs(g - parsed.g) + Math.abs(b - parsed.b);
+    if (diff <= BLOCKLIST_TOLERANCE) return true;
+  }
+  return false;
 }
 
 function util_themePackage(color) {

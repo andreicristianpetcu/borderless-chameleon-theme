@@ -7,7 +7,8 @@ var configData = {
   enableToolbarOverride : true,
   noReuseOldColor   : false,
   newTabColor       : '#ffffff',
-  contentColorScheme: 'auto'
+  contentColorScheme: 'auto',
+  blocklistColors   : ''
 }
 
 function checkStoredSettings(item) {
@@ -62,6 +63,11 @@ function checkStoredSettings(item) {
   if (contentSchemeSelect && configData.contentColorScheme) {
     contentSchemeSelect.value = configData.contentColorScheme;
   }
+
+  const blocklistInput = document.querySelector('#config_HTML_blocklist');
+  if (blocklistInput && configData.blocklistColors !== undefined) {
+    blocklistInput.value = configData.blocklistColors;
+  }
 }
 
 function onError(error) {
@@ -81,6 +87,7 @@ function updateSettings(e) {
   let dom_no_reuse_state   = document.getElementById('config_HTML_no_reuse').checked;
   let dom_new_tab_color    = document.getElementById('config_HTML_new_tab_color').value;
   let dom_content_scheme    = document.getElementById('config_HTML_content_color_scheme').value;
+  let dom_blocklist        = document.getElementById('config_HTML_blocklist').value;
 
   configData.enableBorder   = dom_border_state;
   configData.enableGradient = dom_gradient_state;
@@ -90,6 +97,7 @@ function updateSettings(e) {
   configData.noReuseOldColor   = dom_no_reuse_state;
   configData.newTabColor       = dom_new_tab_color;
   configData.contentColorScheme = dom_content_scheme;
+  configData.blocklistColors   = dom_blocklist.trim();
 
   browser.storage.local.set({configData});
 
@@ -109,5 +117,7 @@ document.addEventListener('DOMContentLoaded',function() {
   document.querySelector('#config_HTML_new_tab_color').onchange = updateSettings;
   document.querySelector('#config_HTML_new_tab_color').oninput  = updateSettings;
   document.querySelector('#config_HTML_content_color_scheme').onchange = updateSettings;
+  document.querySelector('#config_HTML_blocklist').onchange = updateSettings;
+  document.querySelector('#config_HTML_blocklist').oninput  = updateSettings;
 
 },false);

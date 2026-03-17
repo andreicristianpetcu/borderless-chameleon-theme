@@ -49,6 +49,12 @@
     </select>
   </form>
 
+  <form>
+    <label for="config_HTML_blocklist">Blocked colors (comma or newline separated hex, e.g. #FF6B35, #E91E63)</label>
+    <textarea id="config_HTML_blocklist" rows="3" placeholder="#FF6B35, #E91E63, #4CAF50" style="width:100%;margin-top:4px"></textarea>
+    <small style="display:block;margin-top:4px;color:gray">Blocked colors are replaced with the new tab color. Matches within ~30 RGB units.</small>
+  </form>
+
   <script src="options.js"></script>
 </body>
 
